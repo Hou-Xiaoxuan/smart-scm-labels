@@ -1,0 +1,160 @@
+{
+  "name": "smart-scm-labels",
+  "displayName": "Smart SCM Labels (Private Preview)",
+  "description": "Native SCM labels with structural compatibility checks and reversible patch installation.",
+  "version": "0.3.0",
+  "publisher": "local-private",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.100.0"
+  },
+  "main": "./extension.js",
+  "extensionKind": [
+    "ui"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "package": "python3 scripts/package.py"
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "smartScm.installPatch",
+        "title": "Smart SCM: Install Patch"
+      },
+      {
+        "command": "smartScm.removePatch",
+        "title": "Smart SCM: Remove Patch"
+      },
+      {
+        "command": "smartScm.status",
+        "title": "Smart SCM: Patch Status"
+      },
+      {
+        "command": "smartScm.toggle",
+        "title": "Smart SCM: Toggle Labels",
+        "enablement": "scmViewMode == list"
+      },
+      {
+        "command": "smartScm.checkCompatibility",
+        "title": "Smart SCM: Check Compatibility"
+      }
+    ],
+    "configuration": {
+      "title": "Smart SCM Labels",
+      "properties": {
+        "smartScm.enabled": {
+          "type": "boolean",
+          "default": false,
+          "scope": "window",
+          "markdownDescription": "启用原生 SCM 列表的智能路径与文件名折叠。需要先安装对应 VS Code 版本的补丁；仅列表模式生效。可通过 SCM 菜单动态切换。"
+        },
+        "smartScm.minPrefixLength": {
+          "type": "integer",
+          "default": 12,
+          "minimum": 4,
+          "maximum": 128,
+          "scope": "window",
+          "markdownDescription": "文件名公共前缀的最小字符数，范围 **4–128**，默认 **12**。仅同目录文件参与文件名前缀折叠，实际是否折叠还取决于可用宽度。"
+        },
+        "smartScm.maxDisplayLines": {
+          "type": "integer",
+          "default": 2,
+          "minimum": 1,
+          "maximum": 10,
+          "scope": "window",
+          "markdownDescription": "路径与文件名共用的最大显示层数，范围 **1–10**，默认 **2**。设为 **2** 时，首条最多显示公共路径和自身内容两行；继承公共路径的后续文件仅占一行。先缩写目录，再从右侧省略文件名；悬浮可查看完整路径。"
+        },
+        "smartScm.hiddenCommonDirectories": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "scope": "resource",
+          "deprecationMessage": "请改用 smartScm.pathRules；仅在新规则为空时保留旧版从中间删除目录的行为。",
+          "markdownDescription": "旧版目录隐藏配置：仅在公共路径中删除连续匹配的目录段，不支持通配符。仅当 `smartScm.pathRules` 为空时生效。建议改用路径规则。"
+        },
+        "smartScm.pathRules": {
+          "type": "array",
+          "default": [],
+          "scope": "resource",
+          "items": {
+            "type": "object",
+            "required": [
+              "pattern",
+              "mode"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "pattern": {
+                "type": "string",
+                "minLength": 1,
+                "markdownDescription": "从仓库相对路径起点匹配目录前缀，区分大小写。不支持部分目录名匹配；`*` 为一级目录，`**` 为零到多级。例如 `src/main/java` 或 `**/com/example`。不包含文件名。"
+              },
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "hide",
+                  "abbreviate",
+                  "ellipsis",
+                  "replace"
+                ],
+                "markdownDescription": "匹配目录的固定显示方式，与面板宽度无关：`hide` 隐藏，`abbreviate` 逐级首字母缩写，`ellipsis` 显示 `…`，`replace` 使用自定义文本。",
+                "markdownEnumDescriptions": [
+                  "彻底移除匹配的目录，不显示省略号。",
+                  "每级目录固定显示首字母，例如 `src/main/java` → `s/m/j`。",
+                  "将匹配的整段目录固定显示为 `…`。",
+                  "将匹配的整段目录替换为 `replacement` 指定的纯文本。"
+                ]
+              },
+              "replacement": {
+                "type": "string",
+                "markdownDescription": "`mode` 为 `replace` 时必须填写非空、单行文本，例如 `测试`。按纯文本显示，不执行变量替换；其他模式忽略此字段。"
+              }
+            },
+            "defaultSnippets": [
+              {
+                "label": "路径规则：彻底隐藏",
+                "description": "彻底隐藏匹配的目录前缀",
+                "body": {
+                  "pattern": "${1:src/main/java}",
+                  "mode": "hide"
+                }
+              },
+              {
+                "label": "路径规则：始终缩写",
+                "description": "始终缩写匹配的目录前缀",
+                "body": {
+                  "pattern": "${1:src/main/java}",
+                  "mode": "abbreviate"
+                }
+              },
+              {
+                "label": "路径规则：显示省略号",
+                "description": "显示省略号匹配的目录前缀",
+                "body": {
+                  "pattern": "${1:src/main/java}",
+                  "mode": "ellipsis"
+                }
+              },
+              {
+                "label": "路径规则：自定义替换",
+                "description": "自定义替换匹配的目录前缀",
+                "body": {
+                  "pattern": "${1:src/main/java}",
+                  "mode": "replace",
+                  "replacement": "${2:自定义名称}"
+                }
+              }
+            ]
+          },
+          "markdownDescription": "按顺序处理仓库相对路径，使用首条有效且匹配的规则。**从路径开头匹配完整目录段**，不匹配文件名；`*` 匹配一级目录，`**` 贪婪匹配零到多级目录。中间目录必须显式使用 `**/` 匹配。\n\n模式：`hide` 彻底隐藏；`abbreviate` 始终保留每级目录的首字母；`ellipsis` 始终显示 `…`；`replace` 替换为 `replacement` 文本。\n\n支持用户、工作区、文件夹配置（文件夹优先；数组整体覆盖，不合并）。非空时取代旧 `smartScm.hiddenCommonDirectories`，悬浮仍显示原始完整路径。"
+        }
+      }
+    }
+  }
+}
